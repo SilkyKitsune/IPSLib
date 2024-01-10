@@ -51,6 +51,19 @@ public sealed class IPS
         return true;
     }
 
+    public bool Add(IPS ips)
+    {
+        if (ips == null || ips.tables.Length == 0) return false;
+
+        int[] addresses = tables.GetCodes();
+        byte[][] values = tables.GetValues();
+
+        for (int i = 0; i < addresses.Length; i++)
+            if (!tables.ContainsCode(addresses[i]))
+                tables.Add(addresses[i], values[i]);
+        return true;
+    }
+
     public bool Apply(byte[] data)
     {
         if (data == null || data.Length == 0 || tables.Length == 0) return false;
@@ -76,8 +89,6 @@ public sealed class IPS
         }
         return true;
     }
-
-    public void CopyTo(IPS ips) => tables.CopyTo(ips.tables);
 
     public bool Remove(int address) => tables.Remove(address) || (address == 0 && tables.Remove(int.MinValue)) || tables.Remove(-address);
 
