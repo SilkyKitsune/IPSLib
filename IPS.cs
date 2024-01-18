@@ -1,19 +1,12 @@
 ﻿using System;
 using System.IO;
+using ProjectFox.CoreEngine.Data;
 using ProjectFox.CoreEngine.Collections;
 
 namespace IPSLib;
 
 public sealed class IPS
 {
-    private static byte[] GetBytesBig(int i) => new byte[3] { (byte)(i >> 16 & byte.MaxValue), (byte)(i >> 8 & byte.MaxValue), (byte)(i & byte.MaxValue), };
-
-    private static byte[] GetBytesBig(ushort s) => new byte[2] { (byte)(s >> 8 & byte.MaxValue), (byte)(s & byte.MaxValue), };
-
-    private static int ToInt16Big(byte byte0, byte byte1) => (byte0 << 8) | byte1;
-
-    private static int ToInt24Big(byte byte0, byte byte1, byte byte2) => (byte0 << 16) | (byte1 << 8) | byte2;
-
     public IPS() { }
 
     public IPS(string path)
@@ -29,11 +22,14 @@ public sealed class IPS
         for (int i = 5; i < data.Length &&
             data[i] != 0x45 && data[i + 1] != 0x4F && data[i + 2] != 0x46;) ///EOF
         {
-            int address = ToInt24Big(data[i], data[++i], data[++i]), size = ToInt16Big(data[++i], data[++i]);
+            int address = Data.ToInt32(new byte[] { 0, data[i], data[++i], data[++i] }, false), size = (ushort)Data.ToInt16(new byte[] { data[++i], data[++i] }, false);
             bool rle = size == 0;
+            
             Add(rle, address, rle ?
-                new byte[3] { data[++i], data[++i], data[i] } :
+                new byte[3] { data[++i], data[++i], data[++i] } :
                 data[++i..(i += size)]);
+
+            if (rle) i++;
         }
     }
 
@@ -84,7 +80,7 @@ public sealed class IPS
                 address = address == int.MinValue ? 0 : -address;
                 if (address >= data.Length) return false;
                 byte b = data[2];
-                for (int l = ToInt16Big(data[0], data[1]); address < l; address++) data[address] = b;
+                for (int l = (ushort)Data.ToInt16(new byte[] { data[0], data[1] }, false); address < l; address++) data[address] = b;
             }
         }
         return true;
@@ -114,7 +110,7 @@ public sealed class IPS
             $"  Data: {Strings.JoinHex(false, false, ", ", data)}\n"
             :
             $"Address: {Strings.ToHexString(address == int.MinValue ? 0 : -address, false, true)}\n" +
-            $"  RLE_Size: {ToInt16Big(data[0], data[1])}\n" +
+            $"  RLE_Size: {(ushort)Data.ToInt16(new byte[] { data[0], data[1] }, false)}\n" +
             $"  Data: {Strings.ToHexString(data[2])}\n";
     }
 
@@ -137,13 +133,13 @@ public sealed class IPS
             int address = addresses[i];
             if (address > -1)
             {
-                data.Add(GetBytesBig(address));
-                data.Add(GetBytesBig((ushort)values[i].Length));
+                data.Add(Data.GetBytes(address, false)[1..4]);
+                data.Add(Data.GetBytes((short)(ushort)values[i].Length, false));//is this double cast necessary?
                 data.Add(values[i]);
             }
             else
             {
-                data.Add(GetBytesBig(address == int.MinValue ? 0 : -address));
+                data.Add(address == int.MinValue ? new byte[3] : Data.GetBytes(-address, false)[1..4]);
                 data.Add(0x00, 0x00);
                 data.Add(values[i]);
             }
