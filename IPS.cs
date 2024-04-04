@@ -7,6 +7,38 @@ namespace IPSLib;
 
 public sealed class IPS
 {
+    /*
+    enum mergemode?
+    ignore
+    replace
+    combine
+    */
+    
+    public static bool TryRead(out IPS ips, string path)
+    {
+        ips = null;
+
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
+
+        byte[] data = File.ReadAllBytes(path);
+        if (data.Length < 8) return false;
+        //this had || and the EOF had && ???
+        if (data[0] != 0x50 || data[1] != 0x41 || data[2] != 0x54 || data[3] != 0x43 || data[4] != 0x48) ///PATCH
+            return false;
+        
+        ips = new();
+        for (int i = 5; i < data.Length &&
+            (data[i] != 0x45 || data[i + 1] != 0x4F || data[i + 2] != 0x46);) ///EOF
+        {
+            int address = Data.ToInt32(new byte[] { 0, data[i++], data[i++], data[i++] }, false), size = (ushort)Data.ToInt16(new byte[] { data[i++], data[i++] }, false);
+
+            if (size == 0) ips.Add(true, address, new byte[3] { data[i++], data[i++], data[i++] });//change contructor too
+            else ips.Add(false, address, data[i..(i += size)]);
+            //Console.WriteLine($"e {i}<{data.Length}={i < data.Length} && data[{i}]!={0x45}={data[i]} && data[{i+1}]!={0x4F}={data[i + 1]} && data[{i+2}]!={0x46}={data[i + 2]}");
+        }
+        return true;
+    }
+    
     public IPS() { }
 
     public IPS(string path)
@@ -18,9 +50,9 @@ public sealed class IPS
 
         if (data[0] != 0x50 || data[1] != 0x41 || data[2] != 0x54 || data[3] != 0x43 || data[4] != 0x48) ///PATCH
             throw new Exception();
-
+        
         for (int i = 5; i < data.Length &&
-            data[i] != 0x45 && data[i + 1] != 0x4F && data[i + 2] != 0x46;) ///EOF
+            (data[i] != 0x45 || data[i + 1] != 0x4F || data[i + 2] != 0x46);) ///EOF
         {
             int address = Data.ToInt32(new byte[] { 0, data[i], data[++i], data[++i] }, false), size = (ushort)Data.ToInt16(new byte[] { data[++i], data[++i] }, false);
             bool rle = size == 0;
@@ -35,6 +67,8 @@ public sealed class IPS
 
     private readonly HashLookupTable<int, byte[]> tables = new(0x4);
 
+    public int PatchCount => tables.Length;
+
     public bool Add(bool rle, int address, byte[] data)
     {
         if (address > 0xFFFFFF || data == null || data.Length == 0 || data.Length > ushort.MaxValue) return false;
@@ -47,16 +81,19 @@ public sealed class IPS
         return true;
     }
 
-    public bool Add(IPS ips)
+    public bool Add(IPS ips, bool replaceExisting)
     {
         if (ips == null || ips.tables.Length == 0) return false;
 
-        int[] addresses = tables.GetCodes();
-        byte[][] values = tables.GetValues();
+        int[] addresses = ips.tables.GetCodes();
+        byte[][] values = ips.tables.GetValues();
 
         for (int i = 0; i < addresses.Length; i++)
-            if (!tables.ContainsCode(addresses[i]))
-                tables.Add(addresses[i], values[i]);
+        {
+            if (tables.ContainsCode(addresses[i]) && replaceExisting)
+                tables[addresses[i]] = values[i];
+            else tables.Add(addresses[i], values[i]);
+        }
         return true;
     }
 
