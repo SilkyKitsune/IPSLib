@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
-using ProjectFox.CoreEngine.Data;
 using ProjectFox.CoreEngine.Collections;
+using ProjectFox.CoreEngine.Data;
 
 namespace IPSLib;
 
@@ -142,13 +142,13 @@ public sealed class IPS
         byte[] data = tables.GetValues()[index];
 
         return address > -1 ?
-            $"Address: {Strings.ToHexString(address, false, true)}\n" +
+            $"Address: {Data.ToHexString(address, false, true)}\n" +
             $"  Size: {data.Length}\n" +
-            $"  Data: {Strings.JoinHex(false, false, ", ", data)}\n"
+            $"  Data: {Data.JoinHex(false, false, ", ", data)}\n"
             :
-            $"Address: {Strings.ToHexString(address == int.MinValue ? 0 : -address, false, true)}\n" +
+            $"Address: {Data.ToHexString(address == int.MinValue ? 0 : -address, false, true)}\n" +
             $"  RLE_Size: {(ushort)Data.ToInt16(new byte[] { data[0], data[1] }, false)}\n" +
-            $"  Data: {Strings.ToHexString(data[2])}\n";
+            $"  Data: {Data.ToHexString(data[2])}\n";
     }
 
     public void WritePatch(string path, bool overwrite = true)
