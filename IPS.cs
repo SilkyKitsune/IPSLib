@@ -107,17 +107,18 @@ public sealed class IPS
         for (int i = 0; i < addresses.Length; i++)
         {
             int address = addresses[i];
+            byte[] newData = values[i];
             if (address > -1)
             {
                 if (address >= data.Length) return false;
-                Array.Copy(values[i], 0, data, address, values[i].Length);
+                Array.Copy(newData, 0, data, address, newData.Length);
             }
             else
             {
                 address = address == int.MinValue ? 0 : -address;
                 if (address >= data.Length) return false;
-                byte b = data[2];
-                for (int l = (ushort)Data.ToInt16(new byte[] { data[0], data[1] }, false); address < l; address++) data[address] = b;
+                byte b = newData[2];
+                for (int j = 0, l = (ushort)Data.ToInt16(new byte[] { newData[0], newData[1] }, false); j < l; j++) data[address + j] = b;
             }
         }
         return true;
