@@ -81,7 +81,7 @@ public sealed class IPS
         return true;
     }
 
-    public bool Add(IPS ips, bool replaceExisting)
+    public bool Add(IPS ips, MergeMode mergeMode)
     {
         if (ips == null || ips.table.Length == 0) return false;
 
@@ -90,9 +90,24 @@ public sealed class IPS
 
         for (int i = 0; i < addresses.Length; i++)
         {
-            if (tables.ContainsCode(addresses[i]) && replaceExisting)
-                tables[addresses[i]] = values[i];
-            else tables.Add(addresses[i], values[i]);
+            int address = addresses[i];
+            byte[] value = values[i];
+
+            if (table.ContainsCode(address))
+            {
+                switch (mergeMode)
+                {
+                    case MergeMode.Replace:
+                        table[address] = value;
+                        break;
+                    case MergeMode.Combine:
+                        byte[] oldValue = table[address];
+                        if (value.Length >= oldValue.Length) goto case MergeMode.Replace;
+                        value.CopyTo(oldValue, 0);
+                        break;
+                }
+            }
+            else table.Add(address, value);
         }
         return true;
     }
