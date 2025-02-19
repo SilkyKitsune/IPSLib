@@ -65,9 +65,9 @@ public sealed class IPS
         }
     }
 
-    private readonly HashLookupTable<int, byte[]> tables = new(0x4);
+    private readonly LookupTable<int, byte[]> table = new(0x4);
 
-    public int PatchCount => tables.Length;
+    public int PatchCount => table.Length;
 
     public bool Add(bool rle, int address, byte[] data)
     {
@@ -75,18 +75,18 @@ public sealed class IPS
         if (rle)
         {
             if (data.Length != 3) return false;
-            tables.Add(address == 0 ? int.MinValue : -address, data);
+            table.Add(address == 0 ? int.MinValue : -address, data);
         }
-        else tables.Add(address, data);
+        else table.Add(address, data);
         return true;
     }
 
     public bool Add(IPS ips, bool replaceExisting)
     {
-        if (ips == null || ips.tables.Length == 0) return false;
+        if (ips == null || ips.table.Length == 0) return false;
 
-        int[] addresses = ips.tables.GetCodes();
-        byte[][] values = ips.tables.GetValues();
+        int[] addresses = ips.table.GetCodes();
+        byte[][] values = ips.table.GetValues();
 
         for (int i = 0; i < addresses.Length; i++)
         {
@@ -99,10 +99,10 @@ public sealed class IPS
 
     public bool Apply(byte[] data)
     {
-        if (data == null || data.Length == 0 || tables.Length == 0) return false;
+        if (data == null || data.Length == 0 || table.Length == 0) return false;
 
-        int[] addresses = tables.GetCodes();
-        byte[][] values = tables.GetValues();
+        int[] addresses = table.GetCodes();
+        byte[][] values = table.GetValues();
 
         for (int i = 0; i < addresses.Length; i++)
         {
@@ -124,23 +124,23 @@ public sealed class IPS
         return true;
     }
 
-    public bool Remove(int address) => tables.Remove(address) || (address == 0 && tables.Remove(int.MinValue)) || tables.Remove(-address);
+    public bool Remove(int address) => table.Remove(address) || (address == 0 && table.Remove(int.MinValue)) || table.Remove(-address);
 
-    public bool RemoveAt(int index) => tables.RemoveAt(index);
+    public bool RemoveAt(int index) => table.RemoveAt(index);
 
     public override string ToString()
     {
         string s = "PATCH\n-----\n";
-        for (int i = 0, l = tables.Length; i < l; i++) s += ToString(i);
+        for (int i = 0, l = table.Length; i < l; i++) s += ToString(i);
         return s;
     }
 
     public string ToString(int index)
     {
-        if (index < 0 || index >= tables.Length) return string.Empty;
+        if (index < 0 || index >= table.Length) return string.Empty;
 
-        int address = tables.GetCodes()[index];
-        byte[] data = tables.GetValues()[index];
+        int address = table.GetCodes()[index];
+        byte[] data = table.GetValues()[index];
 
         return address > -1 ?
             $"Address: {Data.ToHexString(address, false, true)}\n" +
@@ -163,8 +163,8 @@ public sealed class IPS
             0x50, 0x41, 0x54, 0x43, 0x48, ///PATCH
         }, 0x100);
 
-        int[] addresses = tables.GetCodes();
-        byte[][] values = tables.GetValues();
+        int[] addresses = table.GetCodes();
+        byte[][] values = table.GetValues();
 
         for (int i = 0; i < addresses.Length; i++)
         {
