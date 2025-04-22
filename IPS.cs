@@ -30,7 +30,8 @@ public sealed class IPS
         for (int i = 5; i < data.Length &&
             (data[i] != 0x45 || data[i + 1] != 0x4F || data[i + 2] != 0x46);) ///EOF
         {
-            int address = Data.ToInt32(new byte[] { 0, data[i++], data[i++], data[i++] }, false), size = (ushort)Data.ToInt16(new byte[] { data[i++], data[i++] }, false);
+            int address = Data.ToInt32(new byte[] { 0, data[i++], data[i++], data[i++] }, false),
+                size = (ushort)Data.ToInt16(new byte[] { data[i++], data[i++] }, false);
 
             if (size == 0) ips.Add(true, address, new byte[3] { data[i++], data[i++], data[i++] });//change contructor too
             else ips.Add(false, address, data[i..(i += size)]);
@@ -124,7 +125,30 @@ public sealed class IPS
         return s;
     }
 
+    public string ToStringFull()
+    {
+        string s = "PATCH\n-----\n";
+        for (int i = 0, l = table.Length; i < l; i++) s += ToStringFull(i);
+        return s;
+    }
+
     public string ToString(int index)
+    {
+        if (index < 0 || index >= table.Length) return string.Empty;
+
+        int address = table.GetCodes()[index];
+        byte[] data = table.GetValues()[index];
+
+        return address > -1 ?
+            $"Address: {Data.ToHexString(address, false, true)}\n" +
+            $"  Size: {data.Length}\n"
+            :
+            $"Address: {Data.ToHexString(address == int.MinValue ? 0 : -address, false, true)}\n" +
+            $"  RLE_Size: {(ushort)Data.ToInt16(new byte[] { data[0], data[1] }, false)}\n" +
+            $"  Data: {Data.ToHexString(data[2])}\n";
+    }
+
+    public string ToStringFull(int index)
     {
         if (index < 0 || index >= table.Length) return string.Empty;
 
