@@ -7,13 +7,6 @@ namespace IPSLib;
 
 public sealed class IPS
 {
-    public enum MergeMode
-    {
-        Ignore,
-        Replace,
-        Combine
-    }
-    
     public static bool TryRead(out IPS ips, string path)
     {
         ips = null;
