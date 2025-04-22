@@ -80,6 +80,17 @@ public sealed class IPS
         return true;
     }
 
+    public bool Add(Patch patch)
+    {
+        if (patch is StandardPatch sp) return Add(false, sp.address, sp.data);
+        if (patch is RLEPatch rp)
+        {
+            byte[] data = Data.GetBytes((short)(ushort)rp.size, false);
+            return Add(true, rp.address, new byte[3] { data[0], data[1], rp.data });
+        }
+        return false;
+    }
+
     public bool Apply(byte[] data)
     {
         if (data == null || data.Length == 0 || table.Length == 0) return false;
