@@ -39,32 +39,6 @@ public sealed class IPS
         return true;
     }
     
-    public IPS() { }
-
-    public IPS(string path)
-    {
-        if (string.IsNullOrEmpty(path) || !File.Exists(path)) throw new Exception();
-
-        byte[] data = File.ReadAllBytes(path);
-        if (data.Length < 8) throw new Exception();
-
-        if (data[0] != 0x50 || data[1] != 0x41 || data[2] != 0x54 || data[3] != 0x43 || data[4] != 0x48) ///PATCH
-            throw new Exception();
-        
-        for (int i = 5; i < data.Length &&
-            (data[i] != 0x45 || data[i + 1] != 0x4F || data[i + 2] != 0x46);) ///EOF
-        {
-            int address = Data.ToInt32(new byte[] { 0, data[i], data[++i], data[++i] }, false), size = (ushort)Data.ToInt16(new byte[] { data[++i], data[++i] }, false);
-            bool rle = size == 0;
-            
-            Add(rle, address, rle ?
-                new byte[3] { data[++i], data[++i], data[++i] } :
-                data[++i..(i += size)]);
-
-            if (rle) i++;
-        }
-    }
-
     private readonly LookupTable<int, byte[]> table = new(0x4);
 
     public int PatchCount => table.Length;
