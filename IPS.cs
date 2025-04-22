@@ -186,14 +186,13 @@ public sealed class IPS
             {
                 data.Add(Data.GetBytes(address, false)[1..4]);
                 data.Add(Data.GetBytes((short)(ushort)values[i].Length, false));//is this double cast necessary?
-                data.Add(values[i]);
             }
             else
             {
                 data.Add(address == int.MinValue ? new byte[3] : Data.GetBytes(-address, false)[1..4]);
                 data.Add(0x00, 0x00);
-                data.Add(values[i]);
             }
+            data.Add(values[i]);
         }
         data.Add(0x45, 0x4F, 0x46); ///EOF
         File.WriteAllBytes(path, data.ToArray());
