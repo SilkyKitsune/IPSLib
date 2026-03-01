@@ -209,6 +209,26 @@ namespace IPSLib;
         return true;
     }
 
+    public Patch[] GetPatches()
+    {
+        if (table.Length == 0) return null;
+
+        int[] addresses = table.GetCodes();
+        byte[][] values = table.GetValues();
+        Patch[] patches = new Patch[addresses.Length];
+
+        for (int i = 0; i < addresses.Length; i++)
+        {
+            int address = addresses[i];
+            byte[] value = values[i];
+
+            patches[i] = address < 0 ?
+                new(-address, new byte[1] { value[2] }, (ushort)Data.ToInt16(new byte[2] { value[0], value[1] }, false)) :
+                new(address, value);
+        }
+        return patches;
+    }
+
     public bool Remove(int address) => table.Remove(address) || (address == 0 && table.Remove(int.MinValue)) || table.Remove(-address);
 
     public bool RemoveAt(int index) => table.RemoveAt(index);
