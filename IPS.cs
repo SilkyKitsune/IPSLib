@@ -313,3 +313,170 @@ namespace IPSLib;
         File.WriteAllBytes(path, data.ToArray());
     }
 }
+
+#if DEBUG
+/// <summary> Experimental and incomplete, not intended for use </summary>
+[Obsolete] public sealed class IPSFirstRevision : PatchCollectionOld
+{
+    public static bool TryRead(out IPSFirstRevision ips, string path)
+    {
+        ips = null;
+
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
+
+        byte[] data = File.ReadAllBytes(path);
+        if (data.Length < 8) return false;
+
+        if (data[0] != 0x50 || data[1] != 0x41 || data[2] != 0x54 || data[3] != 0x43 || data[4] != 0x48) ///PATCH
+            return false;
+
+        ips = new();
+        for (int i = 5; i < data.Length &&
+            (data[i] != 0x45 || data[i + 1] != 0x4F || data[i + 2] != 0x46);) ///EOF
+        {
+            int address = Data.ToInt32(new byte[4] { 0, data[i++], data[i++], data[i++] }, false),
+                size = Data.ToInt32(new byte[4] { 0, 0, data[i++], data[i++] }, false);
+
+            if (size == 0) ips.Add(new RepeatedBytePatch(address, Data.ToInt32(new byte[4] { 0, 0, data[i++], data[i++] }, false), data[i++]), MergeMode.Ignore);
+            else ips.Add(new StandardPatch(address, data[i..(i += size)]), MergeMode.Ignore);
+        }
+        return true;
+    }
+
+    public override bool Add(PatchOld patch, MergeMode mergeMode)
+    {
+        if (patch == null || patch.address > 0xFF_FF_FF || patch.Size > ushort.MaxValue || (patch is not StandardPatch && patch is not RepeatedBytePatch)) return false;
+        //check combine mode to make sure new length doesn't exceed FFFF?
+        return base.Add(patch, mergeMode);
+    }
+
+    public override string ToString() => "IPS\n---\n" + base.ToString();
+
+    public override string ToStringFull() => "IPS\n---\n" + base.ToStringFull();
+
+    public override void WritePatch(string path, bool overwrite = true)
+    {
+        path = Path.ChangeExtension(path, "ips");
+
+        if (string.IsNullOrEmpty(path) || (!overwrite && File.Exists(path))) throw new Exception();
+
+        AutoSizedArray<byte> data = new(new byte[5]
+        {
+            0x50, 0x41, 0x54, 0x43, 0x48, ///PATCH
+        }, 0x100);
+
+        foreach (PatchOld patch in GetPatches())
+        {
+            data.Add(Data.GetBytes(patch.address, false)[1..4]);
+            if (patch is StandardPatch standardPatch)
+            {
+                data.Add(Data.GetBytes((short)(ushort)standardPatch.data.Length, false));//is this double cast necessary?
+                data.Add(standardPatch.data);
+            }
+            else if (patch is RepeatedBytePatch rlePatch)
+            {
+                data.Add(0x00, 0x00);
+                data.Add(Data.GetBytes((short)(ushort)rlePatch.size, false));//is this double cast necessary?
+                data.Add(rlePatch.data);
+            }
+        }
+        data.Add(0x45, 0x4F, 0x46); ///EOF
+        File.WriteAllBytes(path, data.ToArray());
+    }
+}
+#endif
+
+public sealed class IPS : PatchCollection
+{
+    public static bool TryRead(out IPS ips, string path)
+    {
+        ips = null;
+
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
+
+        byte[] data = File.ReadAllBytes(path);
+        if (data.Length < 8) return false;
+
+        if (data[0] != 0x50 || data[1] != 0x41 || data[2] != 0x54 || data[3] != 0x43 || data[4] != 0x48) ///PATCH
+            return false;
+
+        ips = new();
+        for (int i = 5; i < data.Length;)
+        {
+            int address = Data.ToInt32(new byte[4] { 0, data[i++], data[i++], data[i++] }, false);
+            if (address == 0x00454F46) break;
+
+            int size = Data.ToInt32(new byte[4] { 0, 0, data[i++], data[i++] }, false);
+            if (size == 0)
+            {
+                int applyCount = Data.ToInt32(new byte[4] { 0, 0, data[i++], data[i++] }, false);
+                ips.Add(new(address, new byte[1] { data[i++] }, applyCount), MergeMode.None);
+            }
+            else ips.Add(new(address, data[i..(i += size)]), MergeMode.None);
+        }
+        return true;
+    }
+
+    public override bool Add(Patch patch, MergeMode mergeMode)
+    {
+        if (patch == null ||
+            patch.address > 0xFF_FF_FF || patch.bytes.Length > ushort.MaxValue || patch.applyCount > ushort.MaxValue ||
+            (patch.bytes.Length > 1 && patch.applyCount > 1)) return false;
+        return base.Add(patch, mergeMode);
+    }
+
+    public override void DeepCopy(out PatchCollection copy)
+    {
+        copy = new IPS();
+        foreach (Patch patch in GetPatches())
+        {
+            patch.DeepCopy(out Patch patchCopy);
+            copy.Add(patchCopy, MergeMode.None);
+        }
+    }
+
+    public override void ShallowCopy(out PatchCollection copy)
+    {
+        copy = new IPS();
+        foreach (Patch patch in GetPatches()) copy.Add(patch, MergeMode.None);
+    }
+
+    public override string ToString() => "IPS\n---\n" + base.ToString();
+
+    public override string ToStringFull() => "IPS\n---\n" + base.ToStringFull();
+
+    public override void WritePatch(string path, bool overwrite = true)
+    {
+        path = Path.ChangeExtension(path, "ips");
+
+        if (string.IsNullOrEmpty(path) || (!overwrite && File.Exists(path))) throw new Exception();
+
+        AutoSizedArray<byte> data = new(new byte[5]
+        {
+            0x50, 0x41, 0x54, 0x43, 0x48 ///PATCH
+        }, 0x100);
+
+        foreach (Patch patch in GetPatches())
+        {
+            if (patch.bytes.Length == 0) continue;
+
+            byte[] addressBytes = Data.GetBytes(patch.address, false);
+            data.Add(addressBytes[1], addressBytes[2], addressBytes[3]);
+
+            if (patch.applyCount == 1)
+            {
+                data.Add(Data.GetBytes((short)(ushort)patch.bytes.Length, false));
+                data.Add(patch.bytes);
+            }
+            else
+            {
+                data.Add(0, 0);
+                data.Add(Data.GetBytes((short)(ushort)patch.applyCount, false));
+                data.Add(patch.bytes[0]);
+            }
+        }
+
+        data.Add(0x45, 0x4F, 0x46); ///EOF
+        File.WriteAllBytes(path, data.ToArray());
+    }
+}
