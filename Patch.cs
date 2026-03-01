@@ -1,4 +1,5 @@
 ﻿using System;
+using ProjectFox.CoreEngine.Collections;
 using ProjectFox.CoreEngine.Data;
 
 namespace IPSLib;
@@ -219,3 +220,67 @@ namespace IPSLib;
         $"  Data: {Data.ToHexString(data)}";
 }
 #endif
+
+public class Patch : ICopy<Patch>
+{
+    public Patch(int address, byte[] bytes, int applyCount = 1)
+    {
+        if (address < 0) throw new ArgumentOutOfRangeException(nameof(address));
+
+        this.bytes = bytes ?? throw new ArgumentNullException(nameof(bytes));
+        this.address = address;
+        this.applyCount = applyCount > 1 ? applyCount : 1;
+    }
+
+    public readonly int address, applyCount;
+    public readonly byte[] bytes;
+
+    public bool Apply(ref byte[] data, bool allowAppend)
+    {
+        if (data == null) throw new NullReferenceException(nameof(data));
+
+        if (allowAppend)
+        {
+            int applyLength = address + (bytes.Length * applyCount);
+            if (address >= data.Length || allowAppend && applyLength > data.Length)
+            {
+                byte[] newData = new byte[applyLength];
+                data.CopyTo(newData, 0);
+                data = newData;
+            }
+        }
+        else if (address >= data.Length) return false;
+
+        for (int i = 0, d = address; i < applyCount; i++)
+            for (int s = 0; s < bytes.Length; s++, d++)
+            {
+                if (d >= data.Length) break;
+                data[d] = bytes[s];
+            }
+        
+        return true;
+    }
+
+    public void DeepCopy(out Patch copy)
+    {
+        byte[] bytesCopy = new byte[bytes.Length];
+        bytes.CopyTo(bytesCopy, 0);
+        copy = new(address, bytesCopy, applyCount);
+    }
+
+    public byte[] GetBytes()
+    {
+        byte[] bytes = new byte[this.bytes.Length * applyCount];
+        for (int i = 0; i < bytes.Length; i++) bytes[i] = this.bytes[i % this.bytes.Length];
+        return bytes;
+    }
+
+    public void ShallowCopy(out Patch copy) => copy = new(address, bytes, applyCount);
+
+    public override string ToString() =>
+        $"Address: {Data.ToHexString(address, false, true)}\n" +
+        $"Size: {bytes.Length} ({Data.ToHexString(bytes.Length, false, true)})\n" +
+        $"Apply Count: {applyCount} ({Data.ToHexString(applyCount, false, true)})";
+
+    public string ToStringFull() => ToString() + $"\n Data: {Data.JoinHex(false, false, ", ", bytes)}";
+}
