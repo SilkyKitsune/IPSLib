@@ -5,9 +5,10 @@ using ProjectFox.CoreEngine.Data;
 
 namespace IPSLib;
 
-public sealed class IPS
+/// <summary> First version of the IPS class, maintained for parity </summary>
+[Obsolete] public sealed class IPSOld
 {
-    public static bool TryRead(out IPS ips, string path)
+    public static bool TryRead(out IPSOld ips, string path)
     {
         ips = null;
 
@@ -49,7 +50,7 @@ public sealed class IPS
         return true;
     }
 
-    public bool Add(IPS ips, MergeMode mergeMode)
+    public bool Add(IPSOld ips, MergeMode mergeMode)
     {
         if (ips == null || ips.table.Length == 0) return false;
 
@@ -68,7 +69,8 @@ public sealed class IPS
                     case MergeMode.Replace:
                         table[address] = value;
                         break;
-                    case MergeMode.Combine:
+                    case MergeMode.CombineUnder:
+                    case MergeMode.CombineOver:
                         byte[] oldValue = table[address];
                         if (value.Length >= oldValue.Length) goto case MergeMode.Replace;
                         value.CopyTo(oldValue, 0);
