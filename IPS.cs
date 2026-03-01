@@ -82,6 +82,106 @@ namespace IPSLib;
         return true;
     }
 
+    public bool Add(Patch patch, MergeMode mergeMode)
+    {
+        if (patch == null || patch.bytes.Length == 0 ||
+            patch.address > 0xFF_FF_FF || patch.bytes.Length > ushort.MaxValue || patch.applyCount > ushort.MaxValue ||
+            (patch.bytes.Length > 1 && patch.applyCount > 1)) return false;
+
+        if (table.Length > 0 || mergeMode != MergeMode.None)
+        {
+            int[] addresses = table.GetCodes();
+            byte[][] values = table.GetValues();
+            for (int i = 0; i < addresses.Length; i++)
+            {
+                int address = addresses[i], applyCount = 1;
+                byte[] value = values[i];
+
+                if (address < 0)
+                {
+                    address = address == int.MinValue ? 0 : -address;
+                    applyCount = (ushort)Data.ToInt16(new byte[2] { value[0], value[1] }, false);
+
+                    byte b = value[2];
+                    value = new byte[applyCount];
+                    for (int j = 0; j < applyCount; j++) value[j] = b;
+                }
+
+                int firstAddress = patch.address, secondAddress = address, firstApplyCount = patch.applyCount;
+                byte[] firstBytes = patch.GetBytes(), secondBytes = value;
+                bool oldFirst = patch.address > address;
+                if (oldFirst)
+                {
+                    secondAddress = patch.address;
+                    secondBytes = firstBytes;
+
+                    firstAddress = address;
+                    firstApplyCount = applyCount;
+                    firstBytes = value;
+                }
+
+                if (secondAddress <= firstAddress + (firstBytes.Length * firstApplyCount))
+                {
+                    switch (mergeMode)
+                    {
+                        case MergeMode.Ignore:
+                            return false;
+
+                        case MergeMode.Replace:
+                            table.RemoveAt(i);
+                            break;
+
+                        case MergeMode.CombineUnder:
+                            {
+                                byte[] newBytes = new byte[M.Max(firstAddress + firstBytes.Length, secondAddress + secondBytes.Length) - firstAddress];
+
+                                if (oldFirst)
+                                {
+                                    secondBytes.CopyTo(newBytes, secondAddress - firstAddress);
+                                    firstBytes.CopyTo(newBytes, 0);
+                                }
+                                else
+                                {
+                                    firstBytes.CopyTo(newBytes, 0);
+                                    secondBytes.CopyTo(newBytes, secondAddress - firstAddress);
+                                }
+
+                                patch = new(firstAddress, newBytes);
+                                goto case MergeMode.Replace;
+                            }
+
+                        case MergeMode.CombineOver:
+                            {
+                                byte[] newBytes = new byte[M.Max(firstAddress + firstBytes.Length, secondAddress + secondBytes.Length) - firstAddress];
+
+                                if (oldFirst)
+                                {
+                                    firstBytes.CopyTo(newBytes, 0);
+                                    secondBytes.CopyTo(newBytes, secondAddress - firstAddress);
+                                }
+                                else
+                                {
+                                    secondBytes.CopyTo(newBytes, secondAddress - firstAddress);
+                                    firstBytes.CopyTo(newBytes, 0);
+                                }
+
+                                patch = new(firstAddress, newBytes);
+                                goto case MergeMode.Replace;
+                            }
+                    }
+                }
+            }
+        }
+
+        if (patch.applyCount == 1) Add(false, patch.address, patch.bytes);
+        else
+        {
+            byte[] applyCountBytes = Data.GetBytes((short)(ushort)patch.applyCount, false);
+            Add(true, patch.address, new byte[3] { applyCountBytes[0], applyCountBytes[1], patch.bytes[0] });
+        }
+        return true;
+    }
+
     public bool Apply(byte[] data)
     {
         if (data == null || data.Length == 0 || table.Length == 0) return false;
