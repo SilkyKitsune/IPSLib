@@ -194,6 +194,18 @@ public abstract class PatchCollection : ICopy<PatchCollection>
         return true;
     }
 
+    public void Add(MergeMode mergeMode, params Patch[] patches)
+    {
+        if (patches == null || patches.Length == 0) return;
+        foreach (Patch patch in patches) Add(patch, mergeMode);
+    }
+
+    public void Add(PatchCollection patchCollection, MergeMode mergeMode)
+    {
+        if (patchCollection == null || patchCollection.patches.Length == 0) return;
+        foreach (Patch patch in patchCollection.patches.ToArray()) Add(patch, mergeMode);
+    }
+
     public virtual bool Apply(ref byte[] data, bool allowAppend)
     {
         if (data == null || data.Length == 0 || patches.Length == 0) return false;

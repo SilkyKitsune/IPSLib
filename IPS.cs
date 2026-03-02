@@ -183,6 +183,18 @@ namespace IPSLib;
         return true;
     }
 
+    public void Add(MergeMode mergeMode, params Patch[] patches)
+    {
+        if (patches == null || patches.Length == 0) return;
+        foreach (Patch patch in patches) Add(patch, mergeMode);
+    }
+
+    public void Add(PatchCollection patchCollection, MergeMode mergeMode)
+    {
+        if (patchCollection == null) return;
+        foreach (Patch patch in patchCollection.GetPatches()) Add(patch, mergeMode);
+    }
+
     public bool Apply(byte[] data)
     {
         if (data == null || data.Length == 0 || table.Length == 0) return false;
@@ -411,9 +423,9 @@ public sealed class IPS : PatchCollection
             if (size == 0)
             {
                 int applyCount = Data.ToInt32(new byte[4] { 0, 0, data[i++], data[i++] }, false);
-                ips.Add(new(address, new byte[1] { data[i++] }, applyCount), MergeMode.None);
+                ips.Add(new Patch(address, new byte[1] { data[i++] }, applyCount), MergeMode.None);
             }
-            else ips.Add(new(address, data[i..(i += size)]), MergeMode.None);
+            else ips.Add(new Patch(address, data[i..(i += size)]), MergeMode.None);
         }
         return true;
     }
