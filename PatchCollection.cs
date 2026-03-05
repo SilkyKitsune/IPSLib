@@ -241,14 +241,14 @@ public abstract class PatchCollection : ICopy<PatchCollection>
 
     //SortAndTruncate(MergeMode)
 
-    public override string ToString() => patches.Join("\n---\n");
+    public override string ToString() => patches.Join("\n-\n");
 
     public string ToString(int index) => index < 0 || index >= patches.Length ? string.Empty : patches[index].ToString();
 
     public virtual string ToStringFull()
     {
         string s = "";
-        foreach (Patch patch in patches.ToArray()) s += patch.ToStringFull() + "\n---\n";
+        foreach (Patch patch in patches.ToArray()) s += patch.ToStringFull() + "\n-\n";
         return s;
     }
 

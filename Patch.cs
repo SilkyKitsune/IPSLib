@@ -282,5 +282,5 @@ public class Patch : ICopy<Patch>
         $"Size: {bytes.Length} ({Data.ToHexString(bytes.Length, false, true)})\n" +
         $"Apply Count: {applyCount} ({Data.ToHexString(applyCount, false, true)})";
 
-    public string ToStringFull() => ToString() + $"\n Data: {Data.JoinHex(false, false, ", ", bytes)}";
+    public string ToStringFull() => ToString() + $"\nData: {Data.JoinHex(false, false, " ", bytes)}";
 }
