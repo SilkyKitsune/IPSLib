@@ -111,6 +111,8 @@ public abstract class PatchCollection : ICopy<PatchCollection>
 {
     private readonly AutoSizedArray<Patch> patches = new(0x4);
 
+    public int PatchCount => patches.Length;
+
     public Patch this[int index] => patches[index];
 
     public virtual bool Add(Patch patch, MergeMode mergeMode)
