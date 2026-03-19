@@ -9,6 +9,10 @@
     <Authors>SilkyKitsune</Authors>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\ProjectFox\ProjectFox.CoreEngine\ProjectFox.CoreEngine.csproj" />
   </ItemGroup>
